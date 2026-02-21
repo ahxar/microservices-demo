@@ -1,0 +1,130 @@
+syntax = "proto3";
+
+package payment.v1;
+
+import "common/v1/common.proto";
+
+option go_package = "github.com/safar/microservices-demo/proto/payment/v1;paymentv1";
+
+// PaymentService handles payment processing
+service PaymentService {
+  rpc AddPaymentMethod(AddPaymentMethodRequest) returns (PaymentMethod);
+  rpc ListPaymentMethods(ListPaymentMethodsRequest) returns (ListPaymentMethodsResponse);
+  rpc DeletePaymentMethod(DeletePaymentMethodRequest) returns (common.v1.Empty);
+  rpc Charge(ChargeRequest) returns (ChargeResponse);
+  rpc Refund(RefundRequest) returns (RefundResponse);
+  rpc GetTransaction(GetTransactionRequest) returns (Transaction);
+}
+
+// PaymentMethodType enum
+enum PaymentMethodType {
+  PAYMENT_METHOD_TYPE_UNSPECIFIED = 0;
+  PAYMENT_METHOD_TYPE_CARD = 1;
+  PAYMENT_METHOD_TYPE_BANK = 2;
+}
+
+// TransactionStatus enum
+enum TransactionStatus {
+  TRANSACTION_STATUS_UNSPECIFIED = 0;
+  TRANSACTION_STATUS_PENDING = 1;
+  TRANSACTION_STATUS_SUCCEEDED = 2;
+  TRANSACTION_STATUS_FAILED = 3;
+  TRANSACTION_STATUS_REFUNDED = 4;
+}
+
+// TransactionType enum
+enum TransactionType {
+  TRANSACTION_TYPE_UNSPECIFIED = 0;
+  TRANSACTION_TYPE_CHARGE = 1;
+  TRANSACTION_TYPE_REFUND = 2;
+}
+
+// PaymentMethod represents a saved payment method
+message PaymentMethod {
+  string id = 1;
+  string user_id = 2;
+  PaymentMethodType type = 3;
+  string token = 4;
+  string last_four = 5;
+  string brand = 6;
+  int32 exp_month = 7;
+  int32 exp_year = 8;
+  bool is_default = 9;
+  string created_at = 10;
+}
+
+// Transaction represents a payment transaction
+message Transaction {
+  string id = 1;
+  string order_id = 2;
+  string user_id = 3;
+  string payment_method_id = 4;
+  common.v1.Money amount = 5;
+  TransactionStatus status = 6;
+  TransactionType type = 7;
+  string provider_ref = 8;
+  string idempotency_key = 9;
+  string created_at = 10;
+}
+
+// AddPaymentMethodRequest to add a payment method
+message AddPaymentMethodRequest {
+  string user_id = 1;
+  PaymentMethodType type = 2;
+  string card_number = 3;
+  int32 exp_month = 4;
+  int32 exp_year = 5;
+  string cvv = 6;
+  bool is_default = 7;
+}
+
+// ListPaymentMethodsRequest to get user's payment methods
+message ListPaymentMethodsRequest {
+  string user_id = 1;
+}
+
+// ListPaymentMethodsResponse with payment methods
+message ListPaymentMethodsResponse {
+  repeated PaymentMethod payment_methods = 1;
+}
+
+// DeletePaymentMethodRequest to remove a payment method
+message DeletePaymentMethodRequest {
+  string id = 1;
+  string user_id = 2;
+}
+
+// ChargeRequest to process a payment
+message ChargeRequest {
+  string order_id = 1;
+  string user_id = 2;
+  string payment_method_id = 3;
+  common.v1.Money amount = 4;
+  string idempotency_key = 5;
+}
+
+// ChargeResponse with transaction result
+message ChargeResponse {
+  bool success = 1;
+  Transaction transaction = 2;
+  string error_message = 3;
+}
+
+// RefundRequest to refund a transaction
+message RefundRequest {
+  string transaction_id = 1;
+  common.v1.Money amount = 2;
+  string reason = 3;
+}
+
+// RefundResponse with refund result
+message RefundResponse {
+  bool success = 1;
+  Transaction transaction = 2;
+  string error_message = 3;
+}
+
+// GetTransactionRequest to retrieve a transaction
+message GetTransactionRequest {
+  string id = 1;
+}

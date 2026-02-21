@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package catalog.v1;
+
+import "proto/common/v1/common.proto";
+
+option go_package = "github.com/safar/microservices-demo/proto/catalog/v1;catalogv1";
+
+// CatalogService handles product catalog and inventory
+service CatalogService {
+  rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
+  rpc GetProduct(GetProductRequest) returns (Product);
+  rpc SearchProducts(SearchProductsRequest) returns (ListProductsResponse);
+  rpc CreateProduct(CreateProductRequest) returns (Product);
+  rpc UpdateProduct(UpdateProductRequest) returns (Product);
+  rpc DeleteProduct(DeleteProductRequest) returns (common.v1.Empty);
+  rpc ListCategories(common.v1.Empty) returns (ListCategoriesResponse);
+  rpc CheckInventory(CheckInventoryRequest) returns (CheckInventoryResponse);
+  rpc ReserveInventory(ReserveInventoryRequest) returns (ReserveInventoryResponse);
+}
+
+// Product represents a product in the catalog
+message Product {
+  string          id             = 1;
+  string          name           = 2;
+  string          slug           = 3;
+  string          description    = 4;
+  common.v1.Money price          = 5;
+  string          category_id    = 6;
+  repeated string image_urls     = 7;
+  int32           stock_quantity = 8;
+  bool            is_active      = 9;
+  string          created_at     = 10;
+  string          updated_at     = 11;
+}
+
+// Category represents a product category
+message Category {
+  string id          = 1;
+  string name        = 2;
+  string slug        = 3;
+  string description = 4;
+  string parent_id   = 5;
+  string created_at  = 6;
+}
+
+// ListProductsRequest for retrieving products
+message ListProductsRequest {
+  common.v1.Pagination pagination  = 1;
+  string               category_id = 2;
+  bool                 active_only = 3;
+}
+
+// ListProductsResponse with paginated products
+message ListProductsResponse {
+  repeated Product             products   = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+// GetProductRequest to retrieve a single product
+message GetProductRequest {
+  oneof identifier {
+    string id   = 1;
+    string slug = 2;
+  }
+}
+
+// SearchProductsRequest for full-text search
+message SearchProductsRequest {
+  string               query       = 1;
+  common.v1.Pagination pagination  = 2;
+  string               category_id = 3;
+}
+
+// CreateProductRequest to create a new product (admin only)
+message CreateProductRequest {
+  string          name           = 1;
+  string          slug           = 2;
+  string          description    = 3;
+  common.v1.Money price          = 4;
+  string          category_id    = 5;
+  repeated string image_urls     = 6;
+  int32           stock_quantity = 7;
+}
+
+// UpdateProductRequest to update a product (admin only)
+message UpdateProductRequest {
+  string          id             = 1;
+  string          name           = 2;
+  string          slug           = 3;
+  string          description    = 4;
+  common.v1.Money price          = 5;
+  string          category_id    = 6;
+  repeated string image_urls     = 7;
+  int32           stock_quantity = 8;
+  bool            is_active      = 9;
+}
+
+// DeleteProductRequest to soft delete a product (admin only)
+message DeleteProductRequest {
+  string id = 1;
+}
+
+// ListCategoriesResponse with all categories
+message ListCategoriesResponse {
+  repeated Category categories = 1;
+}
+
+// InventoryItem for checking stock
+message InventoryItem {
+  string product_id = 1;
+  int32  quantity   = 2;
+}
+
+// CheckInventoryRequest to verify stock availability
+message CheckInventoryRequest {
+  repeated InventoryItem items = 1;
+}
+
+// CheckInventoryResponse with availability status
+message CheckInventoryResponse {
+  bool            available               = 1;
+  repeated string unavailable_product_ids = 2;
+}
+
+// ReserveInventoryRequest to reserve stock for an order
+message ReserveInventoryRequest {
+  string                 order_id           = 1;
+  repeated InventoryItem items              = 2;
+  int32                  expiration_minutes = 3;
+}
+
+// ReserveInventoryResponse with reservation result
+message ReserveInventoryResponse {
+  bool   success        = 1;
+  string reservation_id = 2;
+}

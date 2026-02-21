@@ -1,0 +1,245 @@
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    container_name: microservices-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - microservices
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for cart and caching
+  redis:
+    image: redis:7-alpine
+    container_name: microservices-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - microservices
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Mailhog for email testing
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: microservices-mailhog
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    networks:
+      - microservices
+
+  # User Service
+  user-service:
+    build:
+      context: ../../
+      dockerfile: services/user/Dockerfile
+    container_name: user-service
+    environment:
+      - PORT=50051
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/user_db?sslmode=disable
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_EXPIRY=3600
+    ports:
+      - "50051:50051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - microservices
+    restart: unless-stopped
+
+  # Catalog Service
+  catalog-service:
+    build:
+      context: ../../
+      dockerfile: services/catalog/Dockerfile
+    container_name: catalog-service
+    environment:
+      - PORT=50052
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/catalog_db?sslmode=disable
+    ports:
+      - "50052:50052"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - microservices
+    restart: unless-stopped
+
+  # Cart Service
+  cart-service:
+    build:
+      context: ../../
+      dockerfile: services/cart/Dockerfile
+    container_name: cart-service
+    environment:
+      - PORT=50053
+      - REDIS_URL=redis:6379
+      - CART_TTL_DAYS=7
+    ports:
+      - "50053:50053"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - microservices
+    restart: unless-stopped
+
+  # Order Service
+  order-service:
+    build:
+      context: ../../
+      dockerfile: services/order/Dockerfile
+    container_name: order-service
+    environment:
+      - PORT=50055
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/order_db?sslmode=disable
+      - CATALOG_SERVICE_URL=catalog-service:50052
+      - CART_SERVICE_URL=cart-service:50053
+      - PAYMENT_SERVICE_URL=payment-service:50056
+      - SHIPPING_SERVICE_URL=shipping-service:50058
+      - NOTIFICATION_SERVICE_URL=notification-service:50057
+    ports:
+      - "50055:50055"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - microservices
+    restart: unless-stopped
+
+  # Payment Service (Rust)
+  payment-service:
+    build:
+      context: ../../
+      dockerfile: services/payment/Dockerfile
+    container_name: payment-service
+    environment:
+      - PORT=50056
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/payment_db?sslmode=disable
+    ports:
+      - "50056:50056"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - microservices
+    restart: unless-stopped
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ../../
+      dockerfile: services/notification/Dockerfile
+    container_name: notification-service
+    environment:
+      - PORT=50057
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/notification_db?sslmode=disable
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - SMTP_FROM=noreply@microservices-demo.local
+    ports:
+      - "50057:50057"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - microservices
+    restart: unless-stopped
+
+  # Shipping Service
+  shipping-service:
+    build:
+      context: ../../
+      dockerfile: services/shipping/Dockerfile
+    container_name: shipping-service
+    environment:
+      - PORT=50058
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shipping_db?sslmode=disable
+    ports:
+      - "50058:50058"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - microservices
+    restart: unless-stopped
+
+  # API Gateway
+  gateway:
+    build:
+      context: ../../
+      dockerfile: gateway/Dockerfile
+    container_name: api-gateway
+    environment:
+      - PORT=8080
+      - REDIS_URL=redis:6379
+      - USER_SERVICE_URL=user-service:50051
+      - CATALOG_SERVICE_URL=catalog-service:50052
+      - CART_SERVICE_URL=cart-service:50053
+      - ORDER_SERVICE_URL=order-service:50055
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+    ports:
+      - "8080:8080"
+    depends_on:
+      user-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+      cart-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+      shipping-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - microservices
+    restart: unless-stopped
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - gateway
+    networks:
+      - microservices
+    restart: unless-stopped
+
+networks:
+  microservices:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

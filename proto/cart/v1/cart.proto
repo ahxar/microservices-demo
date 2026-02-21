@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package cart.v1;
+
+import "common/v1/common.proto";
+
+option go_package = "github.com/safar/microservices-demo/proto/cart/v1;cartv1";
+
+// CartService handles shopping cart operations
+service CartService {
+  rpc GetCart(GetCartRequest) returns (Cart);
+  rpc AddItem(AddItemRequest) returns (Cart);
+  rpc UpdateItem(UpdateItemRequest) returns (Cart);
+  rpc RemoveItem(RemoveItemRequest) returns (Cart);
+  rpc ClearCart(ClearCartRequest) returns (common.v1.Empty);
+}
+
+// Cart represents a shopping cart
+message Cart {
+  string user_id = 1;
+  repeated CartItem items = 2;
+  common.v1.Money total = 3;
+  string updated_at = 4;
+}
+
+// CartItem represents an item in the cart
+message CartItem {
+  string product_id = 1;
+  string product_name = 2;
+  int32 quantity = 3;
+  common.v1.Money unit_price = 4;
+  common.v1.Money total_price = 5;
+  string image_url = 6;
+}
+
+// GetCartRequest to retrieve a user's cart
+message GetCartRequest {
+  string user_id = 1;
+}
+
+// AddItemRequest to add an item to the cart
+message AddItemRequest {
+  string user_id = 1;
+  string product_id = 2;
+  string product_name = 3;
+  int32 quantity = 4;
+  common.v1.Money unit_price = 5;
+  string image_url = 6;
+}
+
+// UpdateItemRequest to update item quantity
+message UpdateItemRequest {
+  string user_id = 1;
+  string product_id = 2;
+  int32 quantity = 3;
+}
+
+// RemoveItemRequest to remove an item from cart
+message RemoveItemRequest {
+  string user_id = 1;
+  string product_id = 2;
+}
+
+// ClearCartRequest to clear entire cart
+message ClearCartRequest {
+  string user_id = 1;
+}

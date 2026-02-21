@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package order.v1;
+
+import "common/v1/common.proto";
+
+option go_package = "github.com/safar/microservices-demo/proto/order/v1;orderv1";
+
+// OrderService handles order processing and management
+service OrderService {
+  rpc CreateOrder(CreateOrderRequest) returns (Order);
+  rpc GetOrder(GetOrderRequest) returns (Order);
+  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
+  rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (Order);
+  rpc CancelOrder(CancelOrderRequest) returns (Order);
+}
+
+// OrderStatus enum for order states
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_PENDING = 1;
+  ORDER_STATUS_CONFIRMED = 2;
+  ORDER_STATUS_PROCESSING = 3;
+  ORDER_STATUS_SHIPPED = 4;
+  ORDER_STATUS_DELIVERED = 5;
+  ORDER_STATUS_CANCELLED = 6;
+  ORDER_STATUS_REFUNDED = 7;
+}
+
+// Order represents a customer order
+message Order {
+  string id = 1;
+  string user_id = 2;
+  OrderStatus status = 3;
+  repeated OrderItem items = 4;
+  common.v1.Money subtotal = 5;
+  common.v1.Money shipping = 6;
+  common.v1.Money tax = 7;
+  common.v1.Money total = 8;
+  common.v1.Address shipping_address = 9;
+  string payment_method_id = 10;
+  string transaction_id = 11;
+  string tracking_number = 12;
+  repeated OrderStatusHistory history = 13;
+  string created_at = 14;
+  string updated_at = 15;
+}
+
+// OrderItem represents an item in an order
+message OrderItem {
+  string id = 1;
+  string product_id = 2;
+  string product_name = 3;
+  int32 quantity = 4;
+  common.v1.Money unit_price = 5;
+  common.v1.Money total_price = 6;
+}
+
+// OrderStatusHistory tracks order status changes
+message OrderStatusHistory {
+  string id = 1;
+  OrderStatus status = 2;
+  string notes = 3;
+  string created_at = 4;
+}
+
+// CreateOrderRequest to create a new order
+message CreateOrderRequest {
+  string user_id = 1;
+  common.v1.Address shipping_address = 2;
+  string payment_method_id = 3;
+}
+
+// GetOrderRequest to retrieve an order
+message GetOrderRequest {
+  string id = 1;
+  string user_id = 2;
+}
+
+// ListOrdersRequest to list orders
+message ListOrdersRequest {
+  string user_id = 1;
+  common.v1.Pagination pagination = 2;
+  OrderStatus status_filter = 3;
+}
+
+// ListOrdersResponse with paginated orders
+message ListOrdersResponse {
+  repeated Order orders = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+// UpdateOrderStatusRequest to update order status (admin only)
+message UpdateOrderStatusRequest {
+  string id = 1;
+  OrderStatus status = 2;
+  string notes = 3;
+}
+
+// CancelOrderRequest to cancel an order
+message CancelOrderRequest {
+  string id = 1;
+  string user_id = 2;
+  string reason = 3;
+}

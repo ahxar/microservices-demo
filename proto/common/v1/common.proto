@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package common.v1;
+
+option go_package = "github.com/safar/microservices-demo/proto/common/v1;commonv1";
+
+// Money represents a monetary amount with currency
+message Money {
+  // Amount in cents to avoid floating point precision issues
+  int64 amount_cents = 1;
+
+  // Currency code (ISO 4217) e.g., "USD", "EUR"
+  string currency = 2;
+}
+
+// Address represents a physical address
+message Address {
+  string street = 1;
+  string city = 2;
+  string state = 3;
+  string zip_code = 4;
+  string country = 5;
+}
+
+// Pagination for list requests
+message Pagination {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+// PaginationResponse for list responses
+message PaginationResponse {
+  int32 page = 1;
+  int32 page_size = 2;
+  int32 total_pages = 3;
+  int64 total_count = 4;
+}
+
+// Empty message for RPCs that don't return data
+message Empty {}

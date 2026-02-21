@@ -1,0 +1,151 @@
+syntax = "proto3";
+
+package user.v1;
+
+import "common/v1/common.proto";
+
+option go_package = "github.com/safar/microservices-demo/proto/user/v1;userv1";
+
+// UserService handles user authentication and management
+service UserService {
+  rpc Register(RegisterRequest) returns (AuthResponse);
+  rpc Login(LoginRequest) returns (AuthResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (AuthResponse);
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  rpc GetUser(GetUserRequest) returns (User);
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc AddAddress(AddAddressRequest) returns (UserAddress);
+  rpc ListAddresses(ListAddressesRequest) returns (ListAddressesResponse);
+  rpc AddToWishlist(AddToWishlistRequest) returns (common.v1.Empty);
+  rpc GetWishlist(GetWishlistRequest) returns (WishlistResponse);
+}
+
+// User represents a user account
+message User {
+  string id = 1;
+  string email = 2;
+  string role = 3;
+  Profile profile = 4;
+  string created_at = 5;
+  string updated_at = 6;
+}
+
+// Profile contains user profile information
+message Profile {
+  string first_name = 1;
+  string last_name = 2;
+  string phone = 3;
+  string avatar_url = 4;
+}
+
+// UserAddress represents a saved address
+message UserAddress {
+  string id = 1;
+  string user_id = 2;
+  string label = 3;
+  common.v1.Address address = 4;
+  bool is_default = 5;
+}
+
+// RegisterRequest for new user registration
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  string first_name = 3;
+  string last_name = 4;
+}
+
+// LoginRequest for user authentication
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+// AuthResponse returned after successful authentication
+message AuthResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  User user = 3;
+  int64 expires_in = 4;
+}
+
+// RefreshTokenRequest to get a new access token
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+// ValidateTokenRequest to validate a JWT token
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+// ValidateTokenResponse with token validation result
+message ValidateTokenResponse {
+  bool valid = 1;
+  string user_id = 2;
+  string role = 3;
+}
+
+// GetUserRequest to retrieve a user by ID
+message GetUserRequest {
+  string id = 1;
+}
+
+// UpdateUserRequest to update user profile
+message UpdateUserRequest {
+  string id = 1;
+  Profile profile = 2;
+}
+
+// ListUsersRequest for admin to list all users
+message ListUsersRequest {
+  common.v1.Pagination pagination = 1;
+}
+
+// ListUsersResponse with paginated users
+message ListUsersResponse {
+  repeated User users = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+// AddAddressRequest to add a new address
+message AddAddressRequest {
+  string user_id = 1;
+  string label = 2;
+  common.v1.Address address = 3;
+  bool is_default = 4;
+}
+
+// ListAddressesRequest to get all addresses for a user
+message ListAddressesRequest {
+  string user_id = 1;
+}
+
+// ListAddressesResponse with user's addresses
+message ListAddressesResponse {
+  repeated UserAddress addresses = 1;
+}
+
+// AddToWishlistRequest to add a product to wishlist
+message AddToWishlistRequest {
+  string user_id = 1;
+  string product_id = 2;
+}
+
+// GetWishlistRequest to retrieve user's wishlist
+message GetWishlistRequest {
+  string user_id = 1;
+}
+
+// WishlistItem represents a product in the wishlist
+message WishlistItem {
+  string id = 1;
+  string product_id = 2;
+  string added_at = 3;
+}
+
+// WishlistResponse with all wishlist items
+message WishlistResponse {
+  repeated WishlistItem items = 1;
+}

@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package shipping.v1;
+
+import "common/v1/common.proto";
+
+option go_package = "github.com/safar/microservices-demo/proto/shipping/v1;shippingv1";
+
+// ShippingService handles shipping quotes and tracking
+service ShippingService {
+  rpc GetQuote(GetQuoteRequest) returns (GetQuoteResponse);
+  rpc CreateShipment(CreateShipmentRequest) returns (Shipment);
+  rpc GetShipment(GetShipmentRequest) returns (Shipment);
+  rpc TrackShipment(TrackShipmentRequest) returns (TrackShipmentResponse);
+}
+
+// ShipmentStatus enum
+enum ShipmentStatus {
+  SHIPMENT_STATUS_UNSPECIFIED = 0;
+  SHIPMENT_STATUS_PENDING = 1;
+  SHIPMENT_STATUS_LABEL_CREATED = 2;
+  SHIPMENT_STATUS_PICKED_UP = 3;
+  SHIPMENT_STATUS_IN_TRANSIT = 4;
+  SHIPMENT_STATUS_OUT_FOR_DELIVERY = 5;
+  SHIPMENT_STATUS_DELIVERED = 6;
+  SHIPMENT_STATUS_FAILED = 7;
+}
+
+// Shipment represents a shipment
+message Shipment {
+  string id = 1;
+  string order_id = 2;
+  string tracking_number = 3;
+  string carrier = 4;
+  string service = 5;
+  ShipmentStatus status = 6;
+  string created_at = 7;
+  string shipped_at = 8;
+  string delivered_at = 9;
+}
+
+// TrackingEvent represents a tracking update
+message TrackingEvent {
+  string id = 1;
+  string description = 2;
+  string location = 3;
+  string timestamp = 4;
+}
+
+// ShippingQuote represents a shipping option
+message ShippingQuote {
+  string carrier = 1;
+  string service = 2;
+  common.v1.Money cost = 3;
+  int32 estimated_days = 4;
+}
+
+// GetQuoteRequest to get shipping quotes
+message GetQuoteRequest {
+  common.v1.Address from = 1;
+  common.v1.Address to = 2;
+  int32 weight_grams = 3;
+}
+
+// GetQuoteResponse with available shipping quotes
+message GetQuoteResponse {
+  repeated ShippingQuote quotes = 1;
+}
+
+// CreateShipmentRequest to create a shipment
+message CreateShipmentRequest {
+  string order_id = 1;
+  common.v1.Address from = 2;
+  common.v1.Address to = 3;
+  int32 weight_grams = 4;
+  string carrier = 5;
+  string service = 6;
+}
+
+// GetShipmentRequest to retrieve a shipment
+message GetShipmentRequest {
+  oneof identifier {
+    string id = 1;
+    string order_id = 2;
+    string tracking_number = 3;
+  }
+}
+
+// TrackShipmentRequest to get tracking information
+message TrackShipmentRequest {
+  string tracking_number = 1;
+}
+
+// TrackShipmentResponse with tracking events
+message TrackShipmentResponse {
+  Shipment shipment = 1;
+  repeated TrackingEvent events = 2;
+}
