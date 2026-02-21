@@ -2,11 +2,12 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	_ "github.com/lib/pq"
 )
 
 type Cart struct {
@@ -30,77 +31,129 @@ type Money struct {
 }
 
 type CartRepository struct {
-	client *redis.Client
-	ttl    time.Duration
+	db *sql.DB
 }
 
-func NewCartRepository(redisURL string, ttlDays int) (*CartRepository, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr: redisURL,
-		DB:   0,
-	})
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := client.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+func NewCartRepository(databaseURL string) (*CartRepository, error) {
+	db, err := sql.Open("postgres", databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	return &CartRepository{
-		client: client,
-		ttl:    time.Duration(ttlDays) * 24 * time.Hour,
-	}, nil
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	return &CartRepository{db: db}, nil
 }
 
 func (r *CartRepository) Close() error {
-	return r.client.Close()
+	return r.db.Close()
 }
 
 func (r *CartRepository) GetCart(ctx context.Context, userID string) (*Cart, error) {
-	key := fmt.Sprintf("cart:%s", userID)
-
-	data, err := r.client.Get(ctx, key).Result()
-	if err == redis.Nil {
-		// Return empty cart if not found
-		return &Cart{
-			UserID:    userID,
-			Items:     []CartItem{},
-			UpdatedAt: time.Now(),
-		}, nil
+	cart := &Cart{
+		UserID: userID,
+		Items:  []CartItem{},
 	}
+
+	err := r.db.QueryRowContext(ctx, `
+		SELECT updated_at
+		FROM carts
+		WHERE user_id = $1
+	`, userID).Scan(&cart.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			cart.UpdatedAt = time.Now().UTC()
+			return cart, nil
+		}
 		return nil, fmt.Errorf("failed to get cart: %w", err)
 	}
 
-	var cart Cart
-	if err := json.Unmarshal([]byte(data), &cart); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal cart: %w", err)
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT product_id, product_name, quantity, unit_price_cents, currency, image_url
+		FROM cart_items
+		WHERE user_id = $1
+		ORDER BY product_id ASC
+	`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cart items: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		item := CartItem{}
+		if err := rows.Scan(
+			&item.ProductID,
+			&item.ProductName,
+			&item.Quantity,
+			&item.UnitPrice.AmountCents,
+			&item.UnitPrice.Currency,
+			&item.ImageURL,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan cart item: %w", err)
+		}
+
+		item.TotalPrice = Money{
+			AmountCents: item.UnitPrice.AmountCents * int64(item.Quantity),
+			Currency:    item.UnitPrice.Currency,
+		}
+		cart.Items = append(cart.Items, item)
 	}
 
-	return &cart, nil
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate cart items: %w", err)
+	}
+
+	return cart, nil
 }
 
 func (r *CartRepository) SaveCart(ctx context.Context, cart *Cart) error {
-	key := fmt.Sprintf("cart:%s", cart.UserID)
-	cart.UpdatedAt = time.Now()
-
-	data, err := json.Marshal(cart)
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to marshal cart: %w", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	cart.UpdatedAt = time.Now().UTC()
+
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO carts (user_id, updated_at)
+		VALUES ($1, $2)
+		ON CONFLICT (user_id)
+		DO UPDATE SET updated_at = EXCLUDED.updated_at
+	`, cart.UserID, cart.UpdatedAt); err != nil {
+		return fmt.Errorf("failed to upsert cart: %w", err)
 	}
 
-	if err := r.client.Set(ctx, key, data, r.ttl).Err(); err != nil {
-		return fmt.Errorf("failed to save cart: %w", err)
+	if _, err := tx.ExecContext(ctx, `DELETE FROM cart_items WHERE user_id = $1`, cart.UserID); err != nil {
+		return fmt.Errorf("failed to clear cart items: %w", err)
+	}
+
+	for _, item := range cart.Items {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO cart_items (
+				user_id, product_id, product_name, quantity, unit_price_cents, currency, image_url
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`, cart.UserID, item.ProductID, item.ProductName, item.Quantity, item.UnitPrice.AmountCents, item.UnitPrice.Currency, item.ImageURL); err != nil {
+			return fmt.Errorf("failed to insert cart item: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
 }
 
 func (r *CartRepository) DeleteCart(ctx context.Context, userID string) error {
-	key := fmt.Sprintf("cart:%s", userID)
-
-	if err := r.client.Del(ctx, key).Err(); err != nil {
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM carts WHERE user_id = $1`, userID); err != nil {
 		return fmt.Errorf("failed to delete cart: %w", err)
 	}
 
@@ -113,11 +166,9 @@ func (r *CartRepository) AddItem(ctx context.Context, userID string, item CartIt
 		return nil, err
 	}
 
-	// Check if item already exists
 	found := false
 	for i, existing := range cart.Items {
 		if existing.ProductID == item.ProductID {
-			// Update quantity
 			cart.Items[i].Quantity += item.Quantity
 			cart.Items[i].TotalPrice = Money{
 				AmountCents: cart.Items[i].UnitPrice.AmountCents * int64(cart.Items[i].Quantity),
@@ -129,7 +180,6 @@ func (r *CartRepository) AddItem(ctx context.Context, userID string, item CartIt
 	}
 
 	if !found {
-		// Add new item
 		item.TotalPrice = Money{
 			AmountCents: item.UnitPrice.AmountCents * int64(item.Quantity),
 			Currency:    item.UnitPrice.Currency,
@@ -154,7 +204,6 @@ func (r *CartRepository) UpdateItem(ctx context.Context, userID, productID strin
 	for i, item := range cart.Items {
 		if item.ProductID == productID {
 			if quantity <= 0 {
-				// Remove item if quantity is 0 or less
 				cart.Items = append(cart.Items[:i], cart.Items[i+1:]...)
 			} else {
 				cart.Items[i].Quantity = quantity

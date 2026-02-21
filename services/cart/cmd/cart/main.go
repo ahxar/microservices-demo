@@ -15,33 +15,24 @@ import (
 )
 
 func main() {
-	// Load configuration
 	cfg := config.Load()
 
-	// Initialize repository
-	repo, err := repository.NewCartRepository(cfg.RedisURL, cfg.CartTTLDays)
+	repo, err := repository.NewCartRepository(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to initialize repository: %v", err)
 	}
 	defer repo.Close()
 
-	// Initialize service
 	cartService := service.NewCartService(repo)
-
-	// Initialize gRPC server
 	grpcServer := server.NewGRPCServer(cartService)
 
-	// Create listener
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.Port))
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	// Create and configure gRPC server
 	s := grpc.NewServer()
 	pb.RegisterCartServiceServer(s, grpcServer)
-
-	// Register reflection service for debugging
 	reflection.Register(s)
 
 	log.Printf("Cart Service starting on port %s", cfg.Port)

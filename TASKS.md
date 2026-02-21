@@ -24,8 +24,8 @@
 
 ### Docker & Database
 - [x] `docker-compose.yml` with infrastructure
-- [x] PostgreSQL with 6 databases configured
-- [x] Redis for cart and rate limiting
+- [x] PostgreSQL with 7 databases configured
+- [x] Redis for gateway rate limiting
 - [x] Mailhog for email testing
 - [x] Database initialization script
 
@@ -55,9 +55,9 @@
 - [x] Multi-stage Dockerfile
 - [x] **Service running and tested**
 
-### Cart Service (Go + Redis) - Port 50053 ✅
-- [x] Redis-based cart storage
-- [x] 7-day TTL for abandoned carts
+### Cart Service (Go + PostgreSQL) - Port 50053 ✅
+- [x] PostgreSQL-based cart storage
+- [x] Persistent carts (no TTL)
 - [x] Cart item management (add, update, remove)
 - [x] Automatic total calculation
 - [x] Complete gRPC server implementation
@@ -246,7 +246,7 @@
 | Redis | ✅ Running | 6379 | - | Healthy |
 | User Service | ✅ Running | 50051 | PostgreSQL | Migrations applied |
 | Catalog Service | ✅ Running | 50052 | PostgreSQL | Migrations applied |
-| Cart Service | ✅ Running | 50053 | Redis | Working |
+| Cart Service | ✅ Running | 50053 | PostgreSQL | Working |
 | API Gateway | ✅ Running | 8080 | Redis | All endpoints functional |
 | Order Service | ✅ Implemented | 50055 | PostgreSQL | Checkout flow wired in gateway |
 | Payment Service | ✅ Implemented | 50056 | PostgreSQL | Rust gRPC service integrated |

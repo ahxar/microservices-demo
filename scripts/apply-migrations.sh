@@ -47,6 +47,7 @@ sleep 3
 # Apply migrations for each service
 apply_migrations "user" "user_db"
 apply_migrations "catalog" "catalog_db"
+apply_migrations "cart" "cart_db"
 apply_migrations "order" "order_db"
 apply_migrations "payment" "payment_db"
 apply_migrations "shipping" "shipping_db"

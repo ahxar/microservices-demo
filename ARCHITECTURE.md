@@ -43,8 +43,8 @@ package "Microservices - gRPC" {
 }
 
 package "Data Layer" {
-    database "🗄️ PostgreSQL\nPort 5432\n6 Databases" as POSTGRES INFRASTRUCTURE
-    database "⚡ Redis\nPort 6379\nCache & Cart" as REDIS INFRASTRUCTURE
+    database "🗄️ PostgreSQL\nPort 5432\n7 Databases" as POSTGRES INFRASTRUCTURE
+    database "⚡ Redis\nPort 6379\nGateway Cache & Rate Limiting" as REDIS INFRASTRUCTURE
     rectangle "📬 Mailhog\nPort 8025\nEmail Testing" as MAILHOG INFRASTRUCTURE
 }
 
@@ -80,9 +80,9 @@ ORDER_SVC ..> POSTGRES : SQL
 PAYMENT_SVC ..> POSTGRES : SQL
 SHIPPING_SVC ..> POSTGRES : SQL
 NOTIF_SVC ..> POSTGRES : SQL
+CART_SVC -down-> POSTGRES : SQL
 
 ' Redis Connections
-CART_SVC -down-> REDIS : TCP
 GATEWAY -down-> REDIS : TCP
 
 ' Email

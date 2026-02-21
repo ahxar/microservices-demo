@@ -23,3 +23,7 @@ GRANT ALL PRIVILEGES ON DATABASE shipping_db TO postgres;
 -- Create notification_db database
 CREATE DATABASE notification_db;
 GRANT ALL PRIVILEGES ON DATABASE notification_db TO postgres;
+
+-- Create cart_db database
+CREATE DATABASE cart_db;
+GRANT ALL PRIVILEGES ON DATABASE cart_db TO postgres;

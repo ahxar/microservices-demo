@@ -7,11 +7,19 @@ import (
 	"github.com/safar/microservices-demo/services/cart/internal/repository"
 )
 
-type CartService struct {
-	repo *repository.CartRepository
+type CartStore interface {
+	GetCart(ctx context.Context, userID string) (*repository.Cart, error)
+	AddItem(ctx context.Context, userID string, item repository.CartItem) (*repository.Cart, error)
+	UpdateItem(ctx context.Context, userID, productID string, quantity int32) (*repository.Cart, error)
+	RemoveItem(ctx context.Context, userID, productID string) (*repository.Cart, error)
+	DeleteCart(ctx context.Context, userID string) error
 }
 
-func NewCartService(repo *repository.CartRepository) *CartService {
+type CartService struct {
+	repo CartStore
+}
+
+func NewCartService(repo CartStore) *CartService {
 	return &CartService{
 		repo: repo,
 	}
@@ -23,7 +31,6 @@ func (s *CartService) GetCart(ctx context.Context, userID string) (*repository.C
 		return nil, fmt.Errorf("failed to get cart: %w", err)
 	}
 
-	// Calculate total
 	return cart, nil
 }
 

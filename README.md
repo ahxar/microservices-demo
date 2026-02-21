@@ -29,7 +29,7 @@ API Gateway (Go) - Port 8080
 │ ✅ Notification Service (50057)     │
 └─────────────────────────────────────┘
     ↓
-PostgreSQL (6 DBs) + Redis
+PostgreSQL (7 DBs) + Redis
 ```
 
 ## 🚀 Tech Stack
@@ -40,7 +40,7 @@ PostgreSQL (6 DBs) + Redis
 | API Gateway      | Go (chi router)                                   |
 | Backend Services | Go (6 services), Rust (1 service - Payment)       |
 | Inter-service    | gRPC with Protocol Buffers                        |
-| Databases        | PostgreSQL (per service), Redis (cart/cache)      |
+| Databases        | PostgreSQL (per service), Redis (gateway cache/rate limiting) |
 | Deployment       | Docker Compose (local), Kubernetes (prod)         |
 
 ## 📦 Services
@@ -49,7 +49,7 @@ PostgreSQL (6 DBs) + Redis
 | -------------------- | -------- | ----- | ---------- | ----------------------------------- |
 | User Service         | Go       | 50051 | PostgreSQL | Auth, profiles, addresses, wishlist |
 | Catalog Service      | Go       | 50052 | PostgreSQL | Products, categories, inventory     |
-| Cart Service         | Go       | 50053 | Redis      | Shopping cart (ephemeral)           |
+| Cart Service         | Go       | 50053 | PostgreSQL | Shopping cart persistence           |
 | Order Service        | Go       | 50055 | PostgreSQL | Order processing, orchestration     |
 | Payment Service      | Rust     | 50056 | PostgreSQL | Payment processing, tokenization    |
 | Shipping Service     | Go       | 50058 | PostgreSQL | Shipping quotes, tracking           |
@@ -68,7 +68,7 @@ PostgreSQL (6 DBs) + Redis
 
 - **User Service** (Port 50051): JWT auth, profiles, addresses, wishlists
 - **Catalog Service** (Port 50052): Products, categories, inventory, search
-- **Cart Service** (Port 50053): Redis-backed shopping cart with TTL
+- **Cart Service** (Port 50053): PostgreSQL-backed shopping cart persistence
 - **Order Service** (Port 50055): Checkout orchestration and order lifecycle
 - **Payment Service** (Rust, Port 50056): Payment methods and transactions
 - **Shipping Service** (Port 50058): Quotes, shipment creation, tracking
