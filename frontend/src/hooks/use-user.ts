@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '@/lib/api';
+import { hasAccessToken, redirectToLogin } from '@/lib/auth-redirect';
 
 export function useUser() {
   return useQuery({
@@ -48,7 +49,13 @@ export function useAddToWishlist() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (productId: string) => userApi.addToWishlist(productId),
+    mutationFn: (productId: string) => {
+      if (!hasAccessToken()) {
+        redirectToLogin('action_requires_auth');
+        return Promise.reject(new Error('Authentication required'));
+      }
+      return userApi.addToWishlist(productId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wishlist'] });
     },

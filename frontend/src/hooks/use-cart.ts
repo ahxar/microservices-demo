@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cartApi, type AddCartItemRequest } from '@/lib/api';
+import { hasAccessToken, redirectToLogin } from '@/lib/auth-redirect';
 
 export function useCart() {
   return useQuery({
@@ -12,7 +13,13 @@ export function useAddToCart() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: AddCartItemRequest) => cartApi.addItem(data),
+    mutationFn: (data: AddCartItemRequest) => {
+      if (!hasAccessToken()) {
+        redirectToLogin('action_requires_auth');
+        return Promise.reject(new Error('Authentication required'));
+      }
+      return cartApi.addItem(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
