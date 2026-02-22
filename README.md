@@ -141,6 +141,9 @@ curl http://localhost:8080/health
 # View logs
 make logs
 
+# Optional: start observability profile (Grafana/Prometheus/Loki/Tempo/Promtail)
+make up-observability
+
 # Check Mailhog (email testing)
 open http://localhost:8025
 ```
@@ -401,9 +404,56 @@ Access at: http://localhost:8025
 
 All emails sent by the Notification Service appear in Mailhog.
 
-### Logs
+### Metrics, Traces, and Logs (Grafana Stack)
 
-All services use structured JSON logging:
+Start the observability profile (Prometheus + Grafana + Tempo + Loki + Promtail):
+
+```bash
+make up-observability
+```
+
+Access:
+
+- Grafana: http://localhost:3001 (`admin` / `admin`)
+- Prometheus: http://localhost:9090
+- Gateway health: http://localhost:8080/health
+
+Quick validation:
+
+```bash
+# Prometheus ready
+curl http://localhost:9090/-/ready
+
+# Grafana health
+curl http://localhost:3001/api/health
+
+# Target status (gateway should be up)
+curl http://localhost:9090/api/v1/targets
+```
+
+Generate gateway traffic and confirm:
+
+- `gateway_http_requests_total` and latency metrics in Grafana.
+- traces in the Tempo datasource.
+- container logs in the Loki datasource.
+
+Tail observability logs:
+
+```bash
+make logs-observability
+```
+
+### Kubernetes Dev Overlay Observability
+
+The dev overlay now includes the observability stack:
+
+```bash
+kubectl apply -k deployments/kubernetes/overlays/dev
+```
+
+Grafana is exposed as NodePort `30031` in the dev overlay.
+
+### Service Logs
 
 ```bash
 make logs

@@ -46,7 +46,18 @@ export default function ProductDetailPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="aspect-square bg-muted rounded-lg" />
+        <div className="aspect-square bg-muted rounded-lg overflow-hidden">
+          {product.image_urls?.[0] ? (
+            <img
+              src={product.image_urls[0]}
+              alt={product.name}
+              className="h-full w-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : null}
+        </div>
 
         <div>
           <h1 className="text-3xl font-bold mb-4">{product.name}</h1>

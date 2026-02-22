@@ -169,7 +169,18 @@ export default function AdminProductsPage() {
                     <tr key={product.id} className="border-b last:border-b-0">
                       <td className="p-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-muted rounded-md" />
+                          <div className="w-10 h-10 bg-muted rounded-md overflow-hidden shrink-0">
+                            {product.image_urls?.[0] ? (
+                              <img
+                                src={product.image_urls[0]}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : null}
+                          </div>
                           <span className="font-medium">{product.name}</span>
                         </div>
                       </td>

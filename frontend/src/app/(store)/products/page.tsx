@@ -85,6 +85,18 @@ export default function ProductsPage() {
           {products.map((product) => (
             <Card key={product.id}>
               <CardHeader>
+                <div className="aspect-video overflow-hidden rounded-md bg-muted mb-3">
+                  {product.image_urls?.[0] ? (
+                    <img
+                      src={product.image_urls[0]}
+                      alt={product.name}
+                      className="h-full w-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : null}
+                </div>
                 <CardTitle className="line-clamp-1">{product.name}</CardTitle>
                 <CardDescription className="line-clamp-2">{product.description}</CardDescription>
               </CardHeader>

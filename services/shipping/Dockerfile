@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.26-alpine AS builder
+FROM golang:1-alpine AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ RUN go mod download && \
     CGO_ENABLED=0 GOOS=linux go build -o /app/shipping-service ./cmd/shipping
 
 # Runtime stage
-FROM alpine:latest
+FROM alpine:3.23
 
 WORKDIR /app
 

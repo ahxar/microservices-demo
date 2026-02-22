@@ -4,6 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { useCategories } from '@/hooks/use-products';
 
+const categoryImageBySlug: Record<string, string> = {
+  electronics: '/images/products/wireless-headphones.jpg',
+  clothing: '/images/products/winter-jacket.jpg',
+  books: '/images/products/the-great-gatsby.jpg',
+};
+
 export default function CategoriesPage() {
   const { data: categories = [], isLoading } = useCategories();
 
@@ -25,7 +31,18 @@ export default function CategoriesPage() {
             <Link key={category.id} href={`/products?category_id=${category.id}`}>
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader>
-                  <div className="aspect-video bg-muted rounded-md mb-4" />
+                  <div className="aspect-video bg-muted rounded-md mb-4 overflow-hidden">
+                    {categoryImageBySlug[category.slug] ? (
+                      <img
+                        src={categoryImageBySlug[category.slug]}
+                        alt={category.name}
+                        className="h-full w-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : null}
+                  </div>
                   <CardTitle>{category.name}</CardTitle>
                 </CardHeader>
                 <CardContent>

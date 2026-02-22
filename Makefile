@@ -1,4 +1,4 @@
-.PHONY: help proto-gen build up down logs clean test migrate seed
+.PHONY: help proto-gen build up up-observability down down-observability logs logs-observability clean test migrate seed
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -18,12 +18,23 @@ up: ## Start all services
 	@echo "Starting all services..."
 	docker compose -f deployments/docker/docker-compose.yml up -d
 
+up-observability: ## Start services including observability profile
+	@echo "Starting all services with observability profile..."
+	docker compose -f deployments/docker/docker-compose.yml --profile observability up -d
+
 down: ## Stop all services
 	@echo "Stopping all services..."
 	docker compose -f deployments/docker/docker-compose.yml down
 
+down-observability: ## Stop services including observability profile
+	@echo "Stopping all services with observability profile..."
+	docker compose -f deployments/docker/docker-compose.yml --profile observability down
+
 logs: ## Tail logs from all services
 	docker compose -f deployments/docker/docker-compose.yml logs -f
+
+logs-observability: ## Tail logs from observability services
+	docker compose -f deployments/docker/docker-compose.yml --profile observability logs -f prometheus grafana tempo loki promtail
 
 clean: ## Remove all containers, volumes, and generated files
 	@echo "Cleaning up..."

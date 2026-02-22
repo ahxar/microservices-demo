@@ -6,6 +6,7 @@ import (
 	"time"
 
 	pb "github.com/safar/microservices-demo/proto/cart/v1"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -21,6 +22,7 @@ func NewCartClient(serviceURL string) (*CartClient, error) {
 
 	conn, err := grpc.DialContext(ctx, serviceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 		grpc.WithBlock(),
 	)
 	if err != nil {

@@ -3,6 +3,9 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - observability
 
 patches:
   - path: service-nodeport-patch.yaml
+  - path: gateway-observability-env-patch.yaml
+  - path: grafana-nodeport-patch.yaml

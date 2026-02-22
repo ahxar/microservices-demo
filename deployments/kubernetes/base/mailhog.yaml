@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
         - name: mailhog
-          image: mailhog/mailhog:latest
+          image: mailhog/mailhog:v1.0.1
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 1025

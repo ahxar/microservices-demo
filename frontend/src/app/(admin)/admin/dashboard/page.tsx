@@ -100,13 +100,27 @@ export default function AdminDashboardPage() {
             <div className="space-y-4">
               {(productsData?.products ?? []).slice(0, 5).map((product) => (
                 <div key={product.id} className="flex justify-between items-center">
-                  <div>
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 bg-muted rounded-md overflow-hidden shrink-0">
+                      {product.image_urls?.[0] ? (
+                        <img
+                          src={product.image_urls[0]}
+                          alt={product.name}
+                          className="h-full w-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                    <div>
                     <Link className="font-medium hover:underline" href={`/products/${product.id}`}>
                       {product.name}
                     </Link>
                     <p className="text-sm text-muted-foreground">
                       Stock: {product.stock_quantity}
                     </p>
+                    </div>
                   </div>
                   <span className="font-semibold">
                     {formatMoney(product.price?.amount_cents, product.price?.currency)}

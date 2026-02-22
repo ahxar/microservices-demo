@@ -7,6 +7,7 @@ import (
 
 	pb "github.com/safar/microservices-demo/proto/catalog/v1"
 	commonv1 "github.com/safar/microservices-demo/proto/common/v1"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -22,6 +23,7 @@ func NewCatalogClient(serviceURL string) (*CatalogClient, error) {
 
 	conn, err := grpc.DialContext(ctx, serviceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 		grpc.WithBlock(),
 	)
 	if err != nil {

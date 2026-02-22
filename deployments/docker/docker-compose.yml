@@ -1,7 +1,7 @@
 services:
   # PostgreSQL database
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: microservices-postgres
     environment:
       POSTGRES_USER: postgres
@@ -22,7 +22,7 @@ services:
 
   # Redis for gateway caching and rate limiting
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: microservices-redis
     ports:
       - "6379:6379"
@@ -38,7 +38,7 @@ services:
 
   # Mailhog for email testing
   mailhog:
-    image: mailhog/mailhog:latest
+    image: mailhog/mailhog:v1.0.1
     container_name: microservices-mailhog
     ports:
       - "1025:1025"  # SMTP port
@@ -190,14 +190,20 @@ services:
     container_name: api-gateway
     environment:
       - PORT=8080
+      - METRICS_PORT=9090
       - REDIS_URL=redis:6379
       - USER_SERVICE_URL=user-service:50051
       - CATALOG_SERVICE_URL=catalog-service:50052
       - CART_SERVICE_URL=cart-service:50053
       - ORDER_SERVICE_URL=order-service:50055
+      - OTEL_EXPORTER_OTLP_ENDPOINT=tempo:4317
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+      - OTEL_SERVICE_NAME=gateway
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
     ports:
       - "8080:8080"
+    expose:
+      - "9090"
     depends_on:
       user-service:
         condition: service_started
@@ -235,6 +241,99 @@ services:
       - microservices
     restart: unless-stopped
 
+  # Prometheus (optional observability profile)
+  prometheus:
+    image: prom/prometheus:v3.9.1
+    container_name: microservices-prometheus
+    profiles: ["observability"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      gateway:
+        condition: service_started
+    networks:
+      - microservices
+    restart: unless-stopped
+
+  # Tempo (optional observability profile)
+  tempo:
+    image: grafana/tempo:2.10.1
+    container_name: microservices-tempo
+    profiles: ["observability"]
+    user: "0:0"
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./observability/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo_data:/tmp/tempo
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+    networks:
+      - microservices
+    restart: unless-stopped
+
+  # Loki (optional observability profile)
+  loki:
+    image: grafana/loki:3
+    container_name: microservices-loki
+    profiles: ["observability"]
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./observability/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - microservices
+    restart: unless-stopped
+
+  # Promtail (optional observability profile)
+  promtail:
+    image: grafana/promtail:3
+    container_name: microservices-promtail
+    profiles: ["observability"]
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ./observability/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
+    networks:
+      - microservices
+    restart: unless-stopped
+
+  # Grafana (optional observability profile)
+  grafana:
+    image: grafana/grafana-oss:12.3.3
+    container_name: microservices-grafana
+    profiles: ["observability"]
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+    networks:
+      - microservices
+    restart: unless-stopped
+
 networks:
   microservices:
     driver: bridge
@@ -242,3 +341,7 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  prometheus_data:
+  tempo_data:
+  loki_data:
+  grafana_data:

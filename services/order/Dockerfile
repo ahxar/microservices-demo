@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.26-alpine AS builder
+FROM golang:1-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git
@@ -24,7 +24,7 @@ WORKDIR /app/services/order
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /order-service ./cmd/order
 
 # Runtime stage
-FROM alpine:latest
+FROM alpine:3.23
 
 # Install ca-certificates for HTTPS
 RUN apk --no-cache add ca-certificates

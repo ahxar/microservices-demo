@@ -1,5 +1,5 @@
 # Build stage
-FROM rust:1.93-alpine AS builder
+FROM rust:1-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache musl-dev protobuf-dev
@@ -28,7 +28,7 @@ COPY services/payment/src /app/services/payment/src
 RUN touch src/main.rs && cargo build --release --locked
 
 # Runtime stage
-FROM alpine:latest
+FROM alpine:3.23
 
 # Install runtime dependencies
 RUN apk --no-cache add ca-certificates libgcc

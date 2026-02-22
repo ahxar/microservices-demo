@@ -1,20 +1,55 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/riandyrn/otelchi"
 	"github.com/safar/microservices-demo/gateway/internal/client"
 	"github.com/safar/microservices-demo/gateway/internal/config"
 	"github.com/safar/microservices-demo/gateway/internal/handler"
 	"github.com/safar/microservices-demo/gateway/internal/middleware"
+	"github.com/safar/microservices-demo/gateway/internal/observability"
 )
 
 func main() {
 	// Load configuration
 	cfg := config.Load()
+
+	// Initialize tracing (fail-open).
+	shutdownTracing := func(context.Context) error { return nil }
+	if shutdown, err := observability.InitTracing(
+		context.Background(),
+		cfg.OTELServiceName,
+		cfg.OTELExporterOTLPEndpoint,
+		cfg.OTELExporterOTLPInsecure,
+	); err != nil {
+		log.Printf("warning: tracing disabled: %v", err)
+	} else {
+		shutdownTracing = shutdown
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdownTracing(ctx); err != nil {
+			log.Printf("warning: tracer shutdown failed: %v", err)
+		}
+	}()
+
+	metricsServer := startMetricsServer(cfg.MetricsPort)
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := metricsServer.Shutdown(ctx); err != nil {
+			log.Printf("warning: metrics server shutdown failed: %v", err)
+		}
+	}()
 
 	// Initialize gRPC clients
 	userClient, err := client.NewUserClient(cfg.UserServiceURL)
@@ -60,8 +95,10 @@ func main() {
 	// Global middleware
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
+	r.Use(otelchi.Middleware(cfg.OTELServiceName))
 	r.Use(middleware.CORS())
 	r.Use(middleware.Logger)
+	r.Use(middleware.Metrics())
 	r.Use(rateLimiter.Middleware(100)) // 100 requests per minute
 
 	// Health check
@@ -129,4 +166,31 @@ func main() {
 	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+}
+
+func startMetricsServer(metricsPort string) *http.Server {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ready"))
+	})
+
+	srv := &http.Server{
+		Addr:    ":" + metricsPort,
+		Handler: mux,
+	}
+
+	go func() {
+		log.Printf("Gateway metrics server starting on port %s", metricsPort)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("metrics server failed: %v", err)
+		}
+	}()
+
+	return srv
 }
