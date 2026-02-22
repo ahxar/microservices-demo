@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: microservices-config
+data:
+  JWT_EXPIRY: "3600"
+  SMTP_HOST: "mailhog"
+  SMTP_PORT: "1025"
+  SMTP_FROM: "noreply@microservices-demo.local"
+
+  USER_SERVICE_URL: "user-service:50051"
+  CATALOG_SERVICE_URL: "catalog-service:50052"
+  CART_SERVICE_URL: "cart-service:50053"
+  ORDER_SERVICE_URL: "order-service:50055"
+  PAYMENT_SERVICE_URL: "payment-service:50056"
+  NOTIFICATION_SERVICE_URL: "notification-service:50057"
+  SHIPPING_SERVICE_URL: "shipping-service:50058"
+
+  REDIS_URL: "redis:6379"
+  NEXT_PUBLIC_API_URL: "http://gateway:8080"

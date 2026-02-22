@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: microservices-demo/user-service
+    newTag: dev
+  - name: microservices-demo/catalog-service
+    newTag: dev
+  - name: microservices-demo/cart-service
+    newTag: dev
+  - name: microservices-demo/order-service
+    newTag: dev
+  - name: microservices-demo/payment-service
+    newTag: dev
+  - name: microservices-demo/shipping-service
+    newTag: dev
+  - name: microservices-demo/notification-service
+    newTag: dev
+  - name: microservices-demo/gateway
+    newTag: dev
+  - name: microservices-demo/frontend
+    newTag: dev

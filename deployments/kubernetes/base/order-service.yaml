@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order-service
+  ports:
+    - name: grpc
+      port: 50055
+      targetPort: 50055
+    - name: metrics
+      port: 9095
+      targetPort: 9095
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+        - name: order-service
+          image: ghcr.io/safar/microservices-demo/order-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50055
+              name: grpc
+            - containerPort: 9095
+              name: metrics
+          env:
+            - name: PORT
+              value: "50055"
+            - name: METRICS_PORT
+              value: "9095"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: ORDER_DATABASE_URL
+            - name: CATALOG_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: CATALOG_SERVICE_URL
+            - name: CART_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: CART_SERVICE_URL
+            - name: PAYMENT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: PAYMENT_SERVICE_URL
+            - name: SHIPPING_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: SHIPPING_SERVICE_URL
+            - name: NOTIFICATION_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: NOTIFICATION_SERVICE_URL
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: metrics
+            initialDelaySeconds: 8
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 700m
+              memory: 768Mi

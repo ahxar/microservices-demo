@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cart-service
+spec:
+  selector:
+    app: cart-service
+  ports:
+    - name: grpc
+      port: 50053
+      targetPort: 50053
+    - name: metrics
+      port: 9093
+      targetPort: 9093
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cart-service
+  template:
+    metadata:
+      labels:
+        app: cart-service
+    spec:
+      containers:
+        - name: cart-service
+          image: ghcr.io/safar/microservices-demo/cart-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50053
+              name: grpc
+            - containerPort: 9093
+              name: metrics
+          env:
+            - name: PORT
+              value: "50053"
+            - name: METRICS_PORT
+              value: "9093"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: CART_DATABASE_URL
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: metrics
+            initialDelaySeconds: 8
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 120m
+              memory: 160Mi
+            limits:
+              cpu: 400m
+              memory: 384Mi

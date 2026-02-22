@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+        - name: order-service
+          image: microservices-demo/order-service:latest
+          ports:
+            - containerPort: 50055
+            - containerPort: 9105
+          env:
+            - name: PORT
+              value: "50055"
+            - name: METRICS_PORT
+              value: "9105"
+            - name: DATABASE_URL
+              value: postgres://postgres:postgres@postgres:5432/order_db?sslmode=disable
+            - name: CATALOG_SERVICE_URL
+              value: catalog-service:50052
+            - name: CART_SERVICE_URL
+              value: cart-service:50053
+            - name: PAYMENT_SERVICE_URL
+              value: payment-service:50056
+            - name: SHIPPING_SERVICE_URL
+              value: shipping-service:50058
+            - name: NOTIFICATION_SERVICE_URL
+              value: notification-service:50057
+          resources:
+            requests:
+              cpu: 150m
+              memory: 192Mi
+            limits:
+              cpu: 700m
+              memory: 768Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9105
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9105
+            initialDelaySeconds: 20
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order-service
+  ports:
+    - name: grpc
+      port: 50055
+      targetPort: 50055
+    - name: metrics
+      port: 9105
+      targetPort: 9105

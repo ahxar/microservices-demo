@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipping-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shipping-service
+  template:
+    metadata:
+      labels:
+        app: shipping-service
+    spec:
+      containers:
+        - name: shipping-service
+          image: microservices-demo/shipping-service:latest
+          ports:
+            - containerPort: 50058
+            - containerPort: 9108
+          env:
+            - name: PORT
+              value: "50058"
+            - name: METRICS_PORT
+              value: "9108"
+            - name: DATABASE_URL
+              value: postgres://postgres:postgres@postgres:5432/shipping_db?sslmode=disable
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9108
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9108
+            initialDelaySeconds: 20
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shipping-service
+spec:
+  selector:
+    app: shipping-service
+  ports:
+    - name: grpc
+      port: 50058
+      targetPort: 50058
+    - name: metrics
+      port: 9108
+      targetPort: 9108

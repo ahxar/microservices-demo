@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - hpa.yaml
+patches:
+  - path: replicas.yaml
+images:
+  - name: microservices-demo/user-service
+    newTag: prod
+  - name: microservices-demo/catalog-service
+    newTag: prod
+  - name: microservices-demo/cart-service
+    newTag: prod
+  - name: microservices-demo/order-service
+    newTag: prod
+  - name: microservices-demo/payment-service
+    newTag: prod
+  - name: microservices-demo/shipping-service
+    newTag: prod
+  - name: microservices-demo/notification-service
+    newTag: prod
+  - name: microservices-demo/gateway
+    newTag: prod
+  - name: microservices-demo/frontend
+    newTag: prod

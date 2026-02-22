@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - hpas.yaml
+
+patches:
+  - path: service-loadbalancer-patch.yaml
+  - path: configmap-prod-patch.yaml
+
+replicas:
+  - name: gateway
+    count: 2
+  - name: frontend
+    count: 2
+  - name: user-service
+    count: 2
+  - name: catalog-service
+    count: 2
+  - name: cart-service
+    count: 2
+  - name: order-service
+    count: 2
+  - name: payment-service
+    count: 2
+  - name: notification-service
+    count: 2
+  - name: shipping-service
+    count: 2
